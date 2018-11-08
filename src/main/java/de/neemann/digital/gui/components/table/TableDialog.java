@@ -775,6 +775,7 @@ public class TableDialog extends JDialog {
 
         @Override
         public void resultFound(String name, Expression expression) throws FormatterException {
+            sb.append("% ").append(name).append(" = ").append(FormatToExpression.FORMATTER_JAVA_NUM.format(expression)).append(";\n");
             sb.append(FormatToTableLatex.formatIdentifier(name))
                     .append("&=&")
                     .append(FormatToExpression.FORMATTER_LATEX.format(expression))

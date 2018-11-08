@@ -20,7 +20,7 @@ import java.util.List;
  * After the calculation of the state the method {@link AbstractBusHandler#set(long, long)} is called
  * to propagate the actual state.
  */
-public abstract class AbstractBusHandler {
+public abstract class AbstractBusHandler implements CheckBurn {
 
     private final BusModelStateObserver obs;
     private HashSet<File> origin;
@@ -116,7 +116,8 @@ public abstract class AbstractBusHandler {
      * unavoidable. So this method is called if the step is completed. If a step ends with a burn condition
      * an exception is thrown.
      */
-    void checkBurn() {
+    @Override
+    public void checkBurn() {
         switch (burn) {
             case burn:
                 throw new BurnException(Lang.get("err_burnError"), getAllValues()).addOrigin(origin);

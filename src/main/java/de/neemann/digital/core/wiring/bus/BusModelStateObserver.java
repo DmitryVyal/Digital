@@ -19,7 +19,7 @@ import java.util.HashSet;
  * Handles also the reconfiguration of the nets if a switch has changed.
  */
 public final class BusModelStateObserver implements ModelStateObserverTyped {
-    private final ArrayList<AbstractBusHandler> busList;
+    private final ArrayList<CheckBurn> busList;
     private final HashSet<PlainSwitch.RealSwitch> closedSwitches;
     private int version;
 
@@ -31,9 +31,9 @@ public final class BusModelStateObserver implements ModelStateObserverTyped {
     @Override
     public void handleEvent(ModelEvent event) {
         if (event == ModelEvent.STEP && !busList.isEmpty()) {
-            for (AbstractBusHandler bus : busList) {
+            for (CheckBurn bus : busList)
                 bus.checkBurn();
-            }
+
             busList.clear();
             version++;
         }
@@ -56,7 +56,7 @@ public final class BusModelStateObserver implements ModelStateObserverTyped {
      *
      * @param commonBusValue the value in burn condition
      */
-    public void addCheck(AbstractBusHandler commonBusValue) {
+    public void addCheck(CheckBurn commonBusValue) {
         busList.add(commonBusValue);
     }
 

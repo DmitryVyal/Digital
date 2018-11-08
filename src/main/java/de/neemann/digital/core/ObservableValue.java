@@ -104,8 +104,8 @@ public class ObservableValue extends Observable implements PinDescription {
      */
     public ObservableValue set(long value, long highZ, long strong) {
         highZ = getValueBits(highZ);
-        value = getValueBits(value) & (~highZ);  // high Z bits are set to zero;
-        strong = getValueBits(strong);
+        strong = getValueBits(strong) & (~highZ); // high Z bits are set to zero
+        value = getValueBits(value) & (~highZ);   // high Z bits are set to zero
         if (value != this.value || highZ != this.highZ || strong != this.strong) {
 
             if (isConstant)

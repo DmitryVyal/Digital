@@ -23,6 +23,11 @@ public class FormatToExpression implements Formatter {
      * Creates a string compatible to Java
      */
     public static final FormatToExpression FORMATTER_JAVA = new FormatToExpression("||", "&&", "^", "!", "false", "true");
+
+    /**
+     * Creates a string compatible to Java integer calculations
+     */
+    public static final FormatToExpression FORMATTER_JAVA_NUM = new FormatToExpression("|", "&", "^", "~", "0", "-1");
     /**
      * Creates a string compatible to Derive
      */
