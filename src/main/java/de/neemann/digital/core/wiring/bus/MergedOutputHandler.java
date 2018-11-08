@@ -5,6 +5,7 @@
  */
 package de.neemann.digital.core.wiring.bus;
 
+import com.sun.org.apache.bcel.internal.generic.MethodGen;
 import de.neemann.digital.core.BurnException;
 import de.neemann.digital.core.NodeInterface;
 import de.neemann.digital.core.ObservableValue;
@@ -23,6 +24,7 @@ public class MergedOutputHandler extends ObservableValue implements NodeInterfac
     private int addedVersion = -1;
     private long error;
     private HashSet<File> origin;
+    private boolean burnCheck=true;
 
     /**
      * Creates a new instance.
@@ -36,6 +38,11 @@ public class MergedOutputHandler extends ObservableValue implements NodeInterfac
         this.inputs = inputs;
         for (ObservableValue input : inputs)
             input.addObserver(this);
+    }
+
+    public MergedOutputHandler noBurnCheck() {
+        burnCheck=false;
+        return this;
     }
 
     @Override
@@ -64,12 +71,16 @@ public class MergedOutputHandler extends ObservableValue implements NodeInterfac
         set(v0, z0, s0);
         error = e0;
 
+        if (burnCheck)
+            doBurnCheck();
+    }
+
+    void doBurnCheck() {
         // if burn condition and not yet added for post step check add for post step check
         if (error != 0 && (obs.getVersion() != addedVersion)) {
             addedVersion = obs.getVersion();
             obs.addCheck(this);
         }
-
     }
 
     /**
@@ -96,6 +107,18 @@ public class MergedOutputHandler extends ObservableValue implements NodeInterfac
             origin = new HashSet<>();
         origin.add(file);
         return this;
+    }
+
+    /**
+     * Returns true if this net is a constant
+     *
+     * @return the constant if this is a constant, null otherwise
+     */
+    public ObservableValue searchConstant() {
+        for (ObservableValue i : inputs)
+            if (i.isConstant())
+                return i;
+        return null;
     }
 
 }

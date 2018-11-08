@@ -7,7 +7,6 @@ package de.neemann.digital.core.wiring.bus;
 
 import de.neemann.digital.core.Model;
 import de.neemann.digital.core.ObservableValue;
-import de.neemann.digital.core.element.PinDescription;
 import de.neemann.digital.draw.elements.Pin;
 import de.neemann.digital.draw.elements.PinException;
 import de.neemann.digital.draw.model.Net;
@@ -24,7 +23,7 @@ import java.util.ArrayList;
  * During the calculation of of a single step a temporary burn condition is allowed.
  */
 public class DataBus {
-    private final CommonBusValue commonBusValue;
+    private final MergedOutputHandler commonBusValue;
 
     /**
      * Creates a new data bus
@@ -55,28 +54,12 @@ public class DataBus {
      */
     public DataBus(Net net, Model model, ObservableValue... outputs) throws PinException {
         int bits = 0;
-        PinDescription.PullResistor resistor = PinDescription.PullResistor.none;
         for (ObservableValue o : outputs) {
             int b = o.getBits();
             if (bits == 0) bits = b;
             else {
                 if (bits != b)
                     throw new PinException(Lang.get("err_notAllOutputsSameBits"), net);
-            }
-//            if (!o.supportsHighZ())
-//                throw new PinException(Lang.get("err_notAllOutputsSupportHighZ"), net);
-
-            switch (o.getPullResistor()) {
-                case pullDown:
-                    if (resistor == PinDescription.PullResistor.pullUp)
-                        throw new PinException(Lang.get("err_pullUpAndDownNotAllowed"), net);
-                    resistor = PinDescription.PullResistor.pullDown;
-                    break;
-                case pullUp:
-                    if (resistor == PinDescription.PullResistor.pullDown)
-                        throw new PinException(Lang.get("err_pullUpAndDownNotAllowed"), net);
-                    resistor = PinDescription.PullResistor.pullUp;
-                    break;
             }
         }
 
@@ -86,9 +69,8 @@ public class DataBus {
             model.addObserver(obs);
         }
 
-        commonBusValue = new CommonBusValue(bits, obs, resistor, outputs, net == null ? null : net.getOrigin());
-        for (ObservableValue p : outputs)
-            p.addObserverToValue(commonBusValue);
+        commonBusValue = new MergedOutputHandler(bits, obs, outputs);
+        if (net != null) commonBusValue.addOrigin(net.getOrigin());
         commonBusValue.hasChanged();
     }
 

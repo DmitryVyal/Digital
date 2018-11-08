@@ -8,6 +8,7 @@ package de.neemann.digital.core.switching;
 import de.neemann.digital.core.*;
 import de.neemann.digital.core.wiring.bus.BusModelStateObserver;
 import de.neemann.digital.core.wiring.bus.CommonBusValue;
+import de.neemann.digital.core.wiring.bus.MergedOutputHandler;
 import de.neemann.digital.lang.Lang;
 
 /**
@@ -18,7 +19,9 @@ public final class PlainSwitch implements NodeInterface {
     /**
      * Defines a direction for the switch. NO means no direction is given, the switch is bidirectional.
      */
-    public enum Unidirectional { NO, FROM1TO2, FROM2TO1 }
+    public enum Unidirectional {
+        NO, FROM1TO2, FROM2TO1
+    }
 
     private final ObservableValue output1;
     private final ObservableValue output2;
@@ -65,17 +68,7 @@ public final class PlainSwitch implements NodeInterface {
         if (input1 != null && input2 != null) {
             input1.addObserverToValue(this).checkBits(bits, null);
             input2.addObserverToValue(this).checkBits(bits, null);
-            switch (unidirectional) {
-                case NO:
-                    switchModel = createSwitchModel(input1, input2, output1, output2, true);
-                    break;
-                case FROM1TO2:
-                    switchModel = new UniDirectionalSwitch(input1, output2);
-                    break;
-                case FROM2TO1:
-                    switchModel = new UniDirectionalSwitch(input2, output1);
-                    break;
-            }
+            switchModel = createSwitchModel(input1, input2, output1, output2, true);
         }
     }
 
@@ -84,10 +77,10 @@ public final class PlainSwitch implements NodeInterface {
             ObservableValue output1, ObservableValue output2,
             boolean setOpenPinToHigh) throws NodeException {
 
-        if (input1 instanceof CommonBusValue) {
-            if (input2 instanceof CommonBusValue) {
-                final CommonBusValue in1 = (CommonBusValue) input1;
-                final CommonBusValue in2 = (CommonBusValue) input2;
+        if (input1 instanceof MergedOutputHandler) {
+            if (input2 instanceof MergedOutputHandler) {
+                final MergedOutputHandler in1 = (MergedOutputHandler) input1;
+                final MergedOutputHandler in2 = (MergedOutputHandler) input2;
                 ObservableValue constant = in1.searchConstant();
                 if (constant != null)
                     return new UniDirectionalSwitch(constant, output2);
@@ -96,12 +89,12 @@ public final class PlainSwitch implements NodeInterface {
                     if (constant != null)
                         return new UniDirectionalSwitch(constant, output1, setOpenPinToHigh);
                     else
-                        return new RealSwitch(in1, in2);
+                        return new RealSwitch(in1, in2, output1, output2);
                 }
             } else
                 return new UniDirectionalSwitch(input1, output2);
         } else {
-            if (input2 instanceof CommonBusValue) {
+            if (input2 instanceof MergedOutputHandler) {
                 return new UniDirectionalSwitch(input2, output1, setOpenPinToHigh);
             } else {
                 throw new NodeException(Lang.get("err_switchHasNoNet"), output1, output2);
@@ -230,40 +223,58 @@ public final class PlainSwitch implements NodeInterface {
      * Represents a real bidirectional switch.
      */
     public static final class RealSwitch implements SwitchModel {
-        private final CommonBusValue input1;
-        private final CommonBusValue input2;
+        private final MergedOutputHandler input1;
+        private final MergedOutputHandler input2;
+        private final ObservableValue output1;
+        private final ObservableValue output2;
         private BusModelStateObserver obs;
+        private boolean closed;
+        private MergedOutputHandler merged;
 
-        private RealSwitch(CommonBusValue input1, CommonBusValue input2) {
+        private RealSwitch(MergedOutputHandler input1, MergedOutputHandler input2, ObservableValue output1, ObservableValue output2) {
             this.input1 = input1;
             this.input2 = input2;
+            this.output1 = output1;
+            this.output2 = output2;
         }
 
         @Override
         public void propagate() {
+            if (closed) {
+                final long value = merged.getValue();
+                final long highZ = merged.getHighZ();
+                final long strong = merged.getStrong();
+                output1.set(value, highZ, strong);
+                output2.set(value, highZ, strong);
+            } else {
+                output1.setToHighZ();
+                output2.setToHighZ();
+            }
         }
 
         @Override
         public void setClosed(boolean closed) {
-            obs.setClosed(this, closed);
+            this.closed = closed;
         }
 
         @Override
         public void setModel(Model model) {
             obs = model.getObserver(BusModelStateObserver.class);
+            merged = new MergedOutputHandler(input1.getBits(), obs, input1, input2).noBurnCheck();
+            merged.hasChanged();
         }
 
         /**
          * @return the left hand side net
          */
-        public CommonBusValue getInput1() {
+        public MergedOutputHandler getInput1() {
             return input1;
         }
 
         /**
          * @return the right hand side net
          */
-        public CommonBusValue getInput2() {
+        public MergedOutputHandler getInput2() {
             return input2;
         }
     }
