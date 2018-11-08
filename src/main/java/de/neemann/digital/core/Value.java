@@ -80,7 +80,7 @@ public class Value {
             if (highZ == Bits.mask(bits))
                 return "Z";
             else {
-                return zMaskString(value, highZ, bits);
+                return zMaskString(value, highZ, -1, bits);
             }
         else {
             return IntFormat.toShortHex(value);

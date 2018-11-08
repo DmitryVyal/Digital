@@ -9,6 +9,8 @@ import de.neemann.digital.core.element.ElementTypeDescription;
 import de.neemann.digital.core.element.PinDescription;
 import de.neemann.digital.lang.Lang;
 
+import java.util.Objects;
+
 /**
  * Represents all signal values in the simulator.
  * There are some setters to set the value. Each bit of a value can be set to high z state.
@@ -24,6 +26,8 @@ public class ObservableValue extends Observable implements PinDescription {
     private long value;
     // the high z state of each bit
     private long highZ;
+    // the weak state of each bit
+    private long strong;
     private boolean bidirectional;
     private boolean isConstant = false;
     private String description;
@@ -41,6 +45,7 @@ public class ObservableValue extends Observable implements PinDescription {
         this.bits = bits;
         mask = Bits.mask(bits);
         signedFlag = Bits.signedFlagMask(bits);
+        strong = getValueBits(-1);
     }
 
 
@@ -86,15 +91,29 @@ public class ObservableValue extends Observable implements PinDescription {
      * @return this for chained calls
      */
     public ObservableValue set(long value, long highZ) {
-        value = getValueBits(value);
+        return set(value, highZ, -1);
+    }
+
+    /**
+     * Sets the value and highZ state and fires an event if value has changed.
+     *
+     * @param value  the value
+     * @param highZ  highZ state
+     * @param strong strong state
+     * @return this for chained calls
+     */
+    public ObservableValue set(long value, long highZ, long strong) {
         highZ = getValueBits(highZ);
-        if (highZ != this.highZ || ((~highZ & (value ^ this.value))) != 0) {
+        value = getValueBits(value) & (~highZ);  // high Z bits are set to zero;
+        strong = getValueBits(strong);
+        if (value != this.value || highZ != this.highZ || strong != this.strong) {
 
             if (isConstant)
                 throw new RuntimeException("tried to modify a constant value!");
 
             this.highZ = highZ;
-            this.value = value & (~highZ);  // high Z bits are set to zero
+            this.value = value;
+            this.strong = strong;
             fireHasChanged();
         }
         return this;
@@ -137,23 +156,33 @@ public class ObservableValue extends Observable implements PinDescription {
     }
 
     /**
+     * returns the strong state.
+     * One means the bit is a strong bit, zero means it is a weak bit.
+     *
+     * @return the weak state
+     */
+    public long getStrong() {
+        return strong;
+    }
+
+    /**
      * returns the actual value as a string
      *
      * @return the value as string
      */
     public String getValueString() {
-        if (highZ != 0)
+        if (highZ != 0 || strong != -1)
             if (highZ == mask)
                 return "Z";
             else {
-                return zMaskString(value, highZ, bits);
+                return zMaskString(value, highZ, strong, bits);
             }
         else {
             return IntFormat.toShortHex(value);
         }
     }
 
-    static String zMaskString(long value, long highZ, int bits) {
+    static String zMaskString(long value, long highZ, long strong, int bits) {
         StringBuilder sb = new StringBuilder();
         long m = Bits.up(1, bits - 1);
         for (int i = 0; i < bits; i++) {
@@ -161,9 +190,15 @@ public class ObservableValue extends Observable implements PinDescription {
                 sb.append("z");
             } else {
                 if ((value & m) != 0) {
-                    sb.append("1");
+                    if ((strong & m) != 0)
+                        sb.append("1");
+                    else
+                        sb.append("H");
                 } else {
-                    sb.append("0");
+                    if ((strong & m) != 0)
+                        sb.append("0");
+                    else
+                        sb.append("L");
                 }
             }
             m >>>= 1;
@@ -209,7 +244,7 @@ public class ObservableValue extends Observable implements PinDescription {
      * @param value the value to reduce
      * @return the reduced value
      */
-    public long getValueBits(long value) {
+    public final long getValueBits(long value) {
         return value & mask;
     }
 
